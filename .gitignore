@@ -1,0 +1,47 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.so
+
+# Environment files
+.env
+*.env
+.venv/
+venv/
+env/
+Pipfile.lock
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# Logs and dumps
+*.log
+
+# Data
+data/parsed/
+data/processed/
+data/*.csv
+data/*.jsonl
+
+# Model checkpoints
+checkpoints/
+models/
+*.pt
+*.pth
+*.onnx
+
+# Generated files
+*.tmp
+*.bak
+*.swp
+
+# Ignore raw hand history files
+data/raw/
