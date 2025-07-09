@@ -9,7 +9,7 @@ from board_clusterer import BoardClusterer
 from board_normalizer import BoardNormalizer
 from eval7_service import Eval7Service
 from features.input_vector_builder import InputVectorBuilder
-from hand_classifier import HandClassifier
+from hand_classifier.hand_classifier import HandClassifier
 from villain_range_estimator import VillainRangeEstimator
 
 

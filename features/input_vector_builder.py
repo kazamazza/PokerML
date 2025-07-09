@@ -1,8 +1,11 @@
+from analysis.action_history_analyzer import ActionHistoryAnalyzer
+from analysis.position_analyzer import PositionAnalyzer
 from board_analyzer import BoardAnalyzer
 from eval7_service import Eval7Service
-from hand_classifier import HandClassifier
-from models.poker_ml_input import PokerMLInput, PositionContext, Tier1Inputs
+from hand_classifier.hand_classifier import HandClassifier
+from models.poker_ml_input import PokerMLInput, PositionContext, Tier1Inputs, Tier2Inputs
 from models.poker_session import PokerSession
+from models.villain_action_history import VillainActionHistory, HandActionHistory
 from villain_range_estimator import VillainRangeEstimator
 
 
@@ -12,12 +15,16 @@ class InputVectorBuilder:
         eval_service: Eval7Service,
         hand_classifier: HandClassifier,
         board_analyzer: BoardAnalyzer,
-        villain_estimator: VillainRangeEstimator
+        villain_estimator: VillainRangeEstimator,
+        position_analyzer: PositionAnalyzer,
+        action_history_analyzer: ActionHistoryAnalyzer
     ):
         self.eval_service = eval_service
         self.hand_classifier = hand_classifier
         self.board_analyzer = board_analyzer
         self.villain_estimator = villain_estimator
+        self.position_analyzer = position_analyzer
+        self.action_history_analyzer = action_history_analyzer
 
     def build(self, session: PokerSession) -> PokerMLInput:
         # 1. Tier 1 base extraction
@@ -35,12 +42,7 @@ class InputVectorBuilder:
         equity = self.eval_service.calculate_equity(hero_hand, board, villain_range=...)  # dynamic villain range
 
         # 3. Position context
-        position_ctx = PositionContext(
-            in_position=...,  # derived from role
-            is_heads_up=...,  # based on player count
-            is_multiway=...,
-            aggressor_position=...,
-        )
+        position_ctx = self.position_analyzer.analyze(session)
 
         tier1 = Tier1Inputs(
             hero_hand=hero_hand,
@@ -53,13 +55,37 @@ class InputVectorBuilder:
             effective_stack=stack,
             legal_actions=[...],
             hero_equity_vs_range=equity,
-            hero_hand_strength=hand_strength,
-            board_texture=board_texture.structure,
+            hero_hand_strength=hand_strength.label,  # ✅ just the label
+            board_texture=board_texture,  # ✅ just the structure string
             position_context=position_ctx
         )
 
-        # Tier 2 and Tier 3 inferred based on session.villainProfiles and prior hand history
-        tier2 = ...
+        hero = session.hero_position
+        active_villains = [
+            s.seat_id for s in session.seats
+            if s.seat_id != hero and s.seat_id not in session.folded_players
+        ]
+
+        tier2_aggregate = {}
+
+        for seat in active_villains:
+            villain_actions = [a for a in session.action_history if a.player == seat]
+
+            hand_history = HandActionHistory(hand_id=session.current_hand_id, actions=villain_actions)
+
+            history = VillainActionHistory(
+                seat=seat,
+                total_hands_played=1,
+                hands=[hand_history],
+            )
+
+            stats = self.action_history_analyzer.analyze(history)
+
+            for k, v in stats.items():
+                tier2_aggregate.setdefault(k, []).append(v)
+
+        tier2_averaged = {k: sum(vs) / len(vs) for k, vs in tier2_aggregate.items()}
+        tier2 = Tier2Inputs(**tier2_averaged)
         tier3 = ...
 
         return PokerMLInput(tier1=tier1, tier2=tier2, tier3=tier3)
