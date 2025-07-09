@@ -1,6 +1,11 @@
 from typing import Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass
 
+fold_keywords = [" folds", "folded", "folds "]
+call_keywords = [" calls", "called"]
+raise_keywords = [" raises", "raise", "bets", "bet"]
+check_keywords = [" checks", "check"]
+
 @dataclass
 class FeatureExtractor:
     """
@@ -85,13 +90,13 @@ class FeatureExtractor:
         history = []
         for line in raw_actions:
             line = line.lower()
-            if "folds" in line:
+            if any(k in line for k in fold_keywords):
                 history.append("F")
-            elif "calls" in line:
+            elif any(k in line for k in call_keywords):
                 history.append("C")
-            elif "raises" in line or "bets" in line:
+            elif any(k in line for k in raise_keywords):
                 history.append("R")
-            elif "checks" in line:
+            elif any(k in line for k in check_keywords):
                 history.append("X")
 
         return ''.join(history[-10:])

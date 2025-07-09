@@ -3,6 +3,8 @@ import json
 import re
 from pathlib import Path
 
+from hand_schema import HandHistory
+
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 HAND_SPLIT_RE = re.compile(r"(?=^PokerStars Hand #\d+)", re.MULTILINE)
 HOLE_CARDS_RE = re.compile(r"Dealt to (.+?) \[([2-9TJQKA][cdhs]) ([2-9TJQKA][cdhs])\]")
@@ -48,38 +50,34 @@ def parse_hand_block(text: str, stake_label: str) -> dict:
         "stakes": stake_label,
     }
 
-    # Extract hand ID
     for line in lines:
         if line.startswith("PokerStars Hand #"):
             hand["hand_id"] = line.split("#")[1].split(":")[0]
             break
 
-    # Extract hole cards from "Dealt to ..." (only seen in private HHs)
     for line in lines:
         if (m := HOLE_CARDS_RE.search(line)):
             player, card1, card2 = m.group(1), m.group(2), m.group(3)
             hand["hole_cards_by_player"][player.strip()] = [card1, card2]
 
-    # Extract hole cards from showdown
     for line in lines:
         if (m := SHOWDOWN_RE.match(line)):
             player, card1, card2 = m.group(1), m.group(2), m.group(3)
             if player.strip() not in hand["hole_cards_by_player"]:
                 hand["hole_cards_by_player"][player.strip()] = [card1, card2]
 
-    # Board + street
     hand["board"] = extract_board(lines)
     hand["street"] = determine_street(hand["board"])
 
-    # Actions
     for line in lines:
         if (m := ACTION_LINE_RE.match(line)):
-            player, action = m.group(1), m.group(2)
+            player, action = m.group(1).strip(), m.group(2).strip()
             hand["actions"].append(f"{player} {action}")
             if player not in hand["players"]:
                 hand["players"].append(player)
 
-    return hand
+    # ✅ Return normalized dict via schema
+    return HandHistory(**hand).dict()
 
 # ── MAIN ───────────────────────────────────────────────────────────────────────
 def parse_all_hands(stake: int):
