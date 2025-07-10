@@ -33,7 +33,6 @@ data/*.jsonl
 
 # Model checkpoints
 checkpoints/
-models/
 *.pt
 *.pth
 *.onnx
