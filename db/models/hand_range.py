@@ -1,9 +1,8 @@
 from sqlalchemy import (
     Column, Integer, String, Float, JSON, UniqueConstraint
 )
-from sqlalchemy.ext.declarative import declarative_base
+from db.base import Base
 
-Base = declarative_base()
 
 class HandRange(Base):
     __tablename__ = 'hand_ranges'

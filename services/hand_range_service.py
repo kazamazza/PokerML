@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from sqlalchemy.orm import Session
-from models.hand_range import HandRange
+from db.models.hand_range import HandRange
 from models.poker_session import PokerSession
 
 class HandRangeService:
