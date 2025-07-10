@@ -1,9 +1,10 @@
 from analysis.action_history_analyzer import ActionHistoryAnalyzer
 from analysis.position_analyzer import PositionAnalyzer
+from analysis.psychological_analyzer import PsychologicalAnalyzer
 from board_analyzer import BoardAnalyzer
 from eval7_service import Eval7Service
 from hand_classifier.hand_classifier import HandClassifier
-from models.poker_ml_input import PokerMLInput, PositionContext, Tier1Inputs, Tier2Inputs
+from models.poker_ml_input import PokerMLInput, PositionContext, Tier1Inputs, Tier2Inputs, Tier3Inputs
 from models.poker_session import PokerSession
 from models.villain_action_history import VillainActionHistory, HandActionHistory
 from villain_range_estimator import VillainRangeEstimator
@@ -17,7 +18,8 @@ class InputVectorBuilder:
         board_analyzer: BoardAnalyzer,
         villain_estimator: VillainRangeEstimator,
         position_analyzer: PositionAnalyzer,
-        action_history_analyzer: ActionHistoryAnalyzer
+        action_history_analyzer: ActionHistoryAnalyzer,
+        psychological_analyzer: PsychologicalAnalyzer,
     ):
         self.eval_service = eval_service
         self.hand_classifier = hand_classifier
@@ -25,6 +27,7 @@ class InputVectorBuilder:
         self.villain_estimator = villain_estimator
         self.position_analyzer = position_analyzer
         self.action_history_analyzer = action_history_analyzer
+        self.psychological_analyzer = psychological_analyzer
 
     def build(self, session: PokerSession) -> PokerMLInput:
         # 1. Tier 1 base extraction
@@ -86,7 +89,9 @@ class InputVectorBuilder:
 
         tier2_averaged = {k: sum(vs) / len(vs) for k, vs in tier2_aggregate.items()}
         tier2 = Tier2Inputs(**tier2_averaged)
-        tier3 = ...
+        # Tier 3 psychological metrics
+        tier3_metrics = self.psychological_analyzer.analyze(session)
+        tier3 = Tier3Inputs(**tier3_metrics)
 
         return PokerMLInput(tier1=tier1, tier2=tier2, tier3=tier3)
 
