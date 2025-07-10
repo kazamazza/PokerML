@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from analysis.hero_state_analyzer import HeroStateAnalyzer
+from analysis.villain_profile_aggregator import VillainProfileAggregator
 from features.psychology.collusion_risk_analyzer import CollusionRiskAnalyzer
 from features.psychology.line_pattern_analyzer import LinePatternAnalyzer
 from features.psychology.multiway_aggression_analyzer import MultiwayAggressionAnalyzer
@@ -15,6 +16,7 @@ class PsychologicalAnalyzer:
         self.line_pattern_analyzer = LinePatternAnalyzer()
         self.multiway_aggression_analyzer = MultiwayAggressionAnalyzer()
         self.collusion_risk_analyzer = CollusionRiskAnalyzer()
+        self.villain_profile_aggregator = VillainProfileAggregator()
 
     def analyze(self, session: PokerSession) -> Dict[str, Any]:
         result = {}
@@ -35,6 +37,7 @@ class PsychologicalAnalyzer:
             "villain_line_pattern": [],
             "multiway_aggression_score": [],
             "villain_collusion_risk_level": [],
+            "villain_overall_winrate": []
         }
 
         for seat in active_villains:
@@ -46,26 +49,33 @@ class PsychologicalAnalyzer:
             )
 
             villain_aggregate["villain_snap_action_freq"].append(
-                self.villain_timing_analyzer.analyze(history)["villain_snap_action_freq"]
+                self.villain_timing_analyzer.analyze(history).get("villain_snap_action_freq")
             )
             villain_aggregate["villain_line_pattern"].append(
-                self.line_pattern_analyzer.analyze(history)["villain_line_pattern"]
+                self.line_pattern_analyzer.analyze(history).get("villain_line_pattern")
             )
             villain_aggregate["multiway_aggression_score"].append(
-                self.multiway_aggression_analyzer.analyze(history)["multiway_aggression_score"]
+                self.multiway_aggression_analyzer.analyze(history).get("multiway_aggression_score")
             )
             villain_aggregate["villain_collusion_risk_level"].append(
-                self.collusion_risk_analyzer.analyze(history)["villain_collusion_risk_level"]
+                self.collusion_risk_analyzer.analyze(history).get("villain_collusion_risk_level")
+            )
+            villain_aggregate["villain_overall_winrate"].append(
+                self.villain_profile_aggregator.calculate_overall_winrate(history)
             )
 
         # Aggregate logic
         def average_or_none(vals):
-            vals = [v for v in vals if v is not None]
+            vals = [v for v in vals if isinstance(v, (int, float))]
             return sum(vals) / len(vals) if vals else None
+
+        def first_or_none(vals):
+            return next((v for v in vals if v is not None), None)
 
         result["villain_snap_action_freq"] = average_or_none(villain_aggregate["villain_snap_action_freq"])
         result["multiway_aggression_score"] = average_or_none(villain_aggregate["multiway_aggression_score"])
-        result["villain_line_pattern"] = villain_aggregate["villain_line_pattern"][0] if villain_aggregate["villain_line_pattern"] else None
-        result["villain_collusion_risk_level"] = villain_aggregate["villain_collusion_risk_level"][0] if villain_aggregate["villain_collusion_risk_level"] else None
+        result["villain_line_pattern"] = first_or_none(villain_aggregate["villain_line_pattern"])
+        result["villain_collusion_risk_level"] = first_or_none(villain_aggregate["villain_collusion_risk_level"])
+        result["villain_overall_winrate"] = average_or_none(villain_aggregate["villain_overall_winrate"])
 
         return result

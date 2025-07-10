@@ -46,6 +46,8 @@ class Tier2Inputs(BaseModel):
     hero_tilt_state: Optional[Literal["tilted", "confident", "careful", "neutral"]]
     session_heat: Optional[Literal["hot", "cold", "neutral"]]
     bet_history: Optional[List[BetAction]]
+    villain_cold_call_frequency: Optional[float]
+    villain_hero_bully_history: Optional[float]
 
 
 # TIER 3 — Deep Psychology / Meta
@@ -58,6 +60,7 @@ class Tier3Inputs(BaseModel):
     board_cluster_key: Optional[str]
     villain_line_pattern: Optional[str]
     villain_collusion_risk_level: Optional[Literal["low", "medium", "high"]]
+    villain_overall_winrate: Optional[float]
 
 
 # FULL MODEL

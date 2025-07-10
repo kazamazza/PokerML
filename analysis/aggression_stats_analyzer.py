@@ -10,26 +10,34 @@ class AggressionStatsAnalyzer:
         total_calls = 0
         total_check_raises = 0
         total_check_opportunities = 0
+        hero_targeted_aggression = 0
+        total_aggressive_actions = 0
 
         for hand in history.hands:
             for street in ["flop", "turn", "river"]:
                 actions = hand.get(street, [])
                 previous_action = None
 
-                for i, action in enumerate(actions):
+                for action in actions:
                     if action["player"] != "villain":
                         continue
 
-                    if action["type"] == "bet":
-                        total_bets += 1
-                    elif action["type"] == "raise":
-                        total_raises += 1
-                    elif action["type"] == "call":
-                        total_calls += 1
-                    elif action["type"] == "raise" and previous_action and previous_action["type"] == "check":
-                        total_check_raises += 1
+                    act_type = action["type"]
 
-                    if action["type"] == "check":
+                    if act_type in ("bet", "raise"):
+                        total_aggressive_actions += 1
+                        if action.get("target") == "hero":
+                            hero_targeted_aggression += 1
+
+                    if act_type == "bet":
+                        total_bets += 1
+                    elif act_type == "raise":
+                        total_raises += 1
+                        if previous_action and previous_action["type"] == "check":
+                            total_check_raises += 1
+                    elif act_type == "call":
+                        total_calls += 1
+                    elif act_type == "check":
                         total_check_opportunities += 1
 
                     previous_action = action
@@ -42,8 +50,13 @@ class AggressionStatsAnalyzer:
             total_check_raises / total_check_opportunities
             if total_check_opportunities > 0 else 0.0
         )
+        villain_hero_bully_history = (
+            hero_targeted_aggression / total_aggressive_actions
+            if total_aggressive_actions > 0 else 0.0
+        )
 
         return {
-            "aggression_factor": aggression_factor,
-            "check_raise_frequency": check_raise_frequency,
+            "villain_aggression_factor": aggression_factor,
+            "villain_check_raise_freq": check_raise_frequency,
+            "villain_hero_bully_history": villain_hero_bully_history,
         }

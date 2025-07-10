@@ -4,7 +4,7 @@ from analysis.psychological_analyzer import PsychologicalAnalyzer
 from board_analyzer import BoardAnalyzer
 from eval7_service import Eval7Service
 from hand_classifier.hand_classifier import HandClassifier
-from models.poker_ml_input import PokerMLInput, PositionContext, Tier1Inputs, Tier2Inputs, Tier3Inputs
+from models.poker_ml_input import PokerMLInput, Tier1Inputs, Tier2Inputs, Tier3Inputs
 from models.poker_session import PokerSession
 from models.villain_action_history import VillainActionHistory, HandActionHistory
 from villain_range_estimator import VillainRangeEstimator

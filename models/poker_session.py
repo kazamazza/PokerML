@@ -12,6 +12,7 @@ class ActionEvent(BaseModel):
     amount: Optional[float] = None
     street: Street
     timestamp: Optional[int] = None
+    target: Optional[str] = None  # 🆕 Add this if tracking targeted aggression
 
 class Stakes(BaseModel):
     big_blind: float
