@@ -4,9 +4,13 @@ from analysis.psychological_analyzer import PsychologicalAnalyzer
 from board_analyzer import BoardAnalyzer
 from eval7_service import Eval7Service
 from hand_classifier.hand_classifier import HandClassifier
-from models.poker_ml_input import PokerMLInput, Tier1Inputs, Tier2Inputs, Tier3Inputs
+from helper.hand_range_utils import HandRangeUtils
+from helper.legal_action_resolver import LegalActionResolver
+from helper.role_position_parser import RolePositionParser
+from models.poker_ml_input import PokerMLInput, Tier1Inputs, Tier2Inputs, Tier3Inputs, BetAction
 from models.poker_session import PokerSession
 from models.villain_action_history import VillainActionHistory, HandActionHistory
+from services.hand_range_service import HandRangeService
 from villain_range_estimator import VillainRangeEstimator
 
 
@@ -20,6 +24,9 @@ class InputVectorBuilder:
         position_analyzer: PositionAnalyzer,
         action_history_analyzer: ActionHistoryAnalyzer,
         psychological_analyzer: PsychologicalAnalyzer,
+        hand_range_service: HandRangeService,
+        legal_action_resolver: LegalActionResolver,
+
     ):
         self.eval_service = eval_service
         self.hand_classifier = hand_classifier
@@ -28,6 +35,8 @@ class InputVectorBuilder:
         self.position_analyzer = position_analyzer
         self.action_history_analyzer = action_history_analyzer
         self.psychological_analyzer = psychological_analyzer
+        self.hand_range_service = hand_range_service
+        self.legal_action_resolver = legal_action_resolver
 
     def build(self, session: PokerSession) -> PokerMLInput:
         # 1. Tier 1 base extraction
@@ -37,15 +46,53 @@ class InputVectorBuilder:
         pot_size = session.pot_size or 0.0
         stack = session.stack_sizes.get(session.hero_position, 0.0)
         spr = stack / pot_size if pot_size > 0 else 0.0
-        role = self._infer_player_role(session)
 
-        # 2. Derived fields
+        role = session.role
+
+        # 1. Derived fields
         board_texture = self.board_analyzer.analyze(board)
         hand_strength = self.hand_classifier.classify(hero_hand, board)
-        equity = self.eval_service.calculate_equity(hero_hand, board, villain_range=...)  # dynamic villain range
 
+        # 2. Determine hero and villains based on role
+        parser = RolePositionParser(role)
+        hero_pos = parser.get_hero()
+        villain_positions = parser.get_villains()
+
+        # 3. Load villain hand ranges
+        villain_ranges = []
+
+        for villain_pos in villain_positions:
+            villain_range = self.hand_range_service.get_range(
+                player_role=role,
+                round=street,
+                board=board,
+            )
+            if villain_range:
+                villain_ranges.append(villain_range)
+
+        # 4. Combine villain ranges for Eval7 (e.g., union of combos)
+        combined_villain_range = HandRangeUtils.merge_ranges(villain_ranges)
+
+        # 5. Run equity calculation
+        equity = self.eval_service.calculate_equity(
+            hero_hand=hero_hand,
+            board=board,
+            villain_range=combined_villain_range
+        )
         # 3. Position context
         position_ctx = self.position_analyzer.analyze(session)
+
+        legal_actions = self.legal_action_resolver.resolve(
+            street=street,
+            stack=stack,
+            pot_size=pot_size,
+            bet_history=[
+                BetAction(player=a.player, action=a.action, size=a.amount or 0.0)
+                for a in session.action_history
+                if a.action in {"bet", "raise", "call", "3bet", "shove"}
+            ],
+            is_all_in=session.hero_profile.isAllIn
+        )
 
         tier1 = Tier1Inputs(
             hero_hand=hero_hand,
@@ -56,7 +103,7 @@ class InputVectorBuilder:
             stack_to_pot_ratio=spr,
             pot_size=pot_size,
             effective_stack=stack,
-            legal_actions=[...],
+            legal_actions=legal_actions,
             hero_equity_vs_range=equity,
             hero_hand_strength=hand_strength.label,  # ✅ just the label
             board_texture=board_texture,  # ✅ just the structure string
@@ -94,32 +141,3 @@ class InputVectorBuilder:
         tier3 = Tier3Inputs(**tier3_metrics)
 
         return PokerMLInput(tier1=tier1, tier2=tier2, tier3=tier3)
-
-    def _infer_player_role(self, session: PokerSession) -> str:
-        hero_pos = session.hero_position
-        player_count = session.player_count
-        folded = set(session.folded_players or [])
-
-        # Remaining players
-        active_seats = [seat for seat in session.stack_sizes.keys() if seat not in folded]
-
-        # Heads-up roles
-        if player_count == 2:
-            if hero_pos == "BTN":
-                return "BTN_vs_BB"
-            elif hero_pos == "BB":
-                return "BB_vs_BTN"
-            else:
-                return f"{hero_pos}_vs_other"
-
-        # 6-max or full ring roles
-        if player_count >= 3:
-            remaining = len(active_seats)
-            if remaining == 2:
-                villain_pos = next(seat for seat in active_seats if seat != hero_pos)
-                return f"{hero_pos}_vs_{villain_pos}"
-            else:
-                return f"{hero_pos}_vs_Multiway"
-
-        # Fallback
-        return f"{hero_pos}_unknown"

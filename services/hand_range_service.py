@@ -7,7 +7,7 @@ class HandRangeService:
     def __init__(self, db_session: Session):
         self.db = db_session
 
-    def get_hand_range(
+    def get_range(
         self,
         player_role: str,
         round: str,
@@ -86,7 +86,7 @@ class HandRangeService:
         )
         villain_profile = sorted_villains[0].dict() if sorted_villains else {}
 
-        return self.get_hand_range(
+        return self.get_range(
             player_role=player_role,
             round=round,
             board=board,

@@ -4,7 +4,7 @@ from typing import Dict, List
 
 
 class BoardTextureLoader:
-    CONFIG_PATH = "/config/board_textures.json"
+    CONFIG_PATH = "config/board_textures.json"
 
     @classmethod
     def load(cls) -> Dict[str, List[str]]:

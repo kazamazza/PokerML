@@ -1,5 +1,5 @@
-from typing import List, Optional, Literal, Dict
-from pydantic import BaseModel, Field
+from typing import List, Optional, Literal
+from pydantic import BaseModel
 
 from models.board_texture import BoardTexture
 

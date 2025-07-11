@@ -1,13 +1,17 @@
 services:
   db:
     image: postgres:15
-    env_file: .env
+    environment:
+      POSTGRES_USER: pokerMLUser
+      POSTGRES_PASSWORD: MLWhisk777!
+      POSTGRES_DB: pokerMLdb
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
-  app:
+  ml_service:
     build: .
     env_file: .env
     depends_on:
@@ -18,3 +22,10 @@ services:
         python db/init.py &&
         python scripts/check_and_generate_hand_ranges.py
       "
+    volumes:
+      - .:/app
+    environment:
+      PYTHONPATH: /app
+
+volumes:
+  postgres_data:

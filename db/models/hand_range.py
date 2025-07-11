@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Integer, String, Float, JSON, UniqueConstraint
+    Column, Integer, String, Float, JSON, UniqueConstraint, Index
 )
 from db.base import Base
 
@@ -10,8 +10,10 @@ class HandRange(Base):
     id = Column(Integer, primary_key=True)
     player_role = Column(String(50), nullable=False)
     round = Column(String(10), nullable=False)
-    board_cluster = Column(String(100), nullable=False)
-    board = Column(String(20), nullable=False)
+
+    # ✅ Now nullable (used only postflop)
+    board_cluster = Column(String(100), nullable=True)
+    board = Column(String(20), nullable=True)
 
     # Villain profile metrics
     villain_type = Column(String(50), nullable=False, default='default')
@@ -47,4 +49,5 @@ class HandRange(Base):
             'villain_hero_vs_villain_winrate',
             name='uq_hand_range_full_profile'
         ),
+        Index("ix_role_round_board", "player_role", "round", "board_cluster")
     )

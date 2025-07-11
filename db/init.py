@@ -1,5 +1,6 @@
 from db.session import engine
-from db.models.hand_range import Base
+from db.base import Base
+from models.hand_range import HandRange
 
 def init_db():
     Base.metadata.create_all(bind=engine)
