@@ -13,6 +13,7 @@ grpcio==1.73.1
 h11==0.16.0
 idna==3.10
 importlib_metadata==8.7.0
+iniconfig==2.1.0
 Jinja2==3.1.6
 joblib==1.5.1
 Markdown==3.8.2
@@ -22,11 +23,14 @@ networkx==3.2.1
 numpy==2.0.2
 packaging==25.0
 pandas==2.3.0
+pluggy==1.6.0
 protobuf==6.31.1
 psycopg2-binary==2.9.10
 pydantic==2.11.7
 pydantic_core==2.33.2
+Pygments==2.19.2
 pyparsing==3.2.3
+pytest==8.4.1
 python-dateutil==2.9.0.post0
 pytz==2025.2
 scikit-learn==1.6.1
@@ -39,6 +43,7 @@ sympy==1.14.0
 tensorboard==2.19.0
 tensorboard-data-server==0.7.2
 threadpoolctl==3.6.0
+tomli==2.2.1
 torch==2.7.1
 tqdm==4.67.1
 typing-inspection==0.4.1

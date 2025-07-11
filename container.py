@@ -1,20 +1,28 @@
+from sqlalchemy.orm import Session
+
 from analysis.action_context_classifier import ActionContextClassifier
 from analysis.action_history_analyzer import ActionHistoryAnalyzer
 from analysis.opponent_model_aggregator import OpponentModelAggregator
 from analysis.position_analyzer import PositionAnalyzer
+from analysis.psychological_analyzer import PsychologicalAnalyzer
 from analysis.range_strength_comparator import RangeStrengthComparator
 from analysis.tilt_risk_estimator import TiltRiskEstimator
 from board_analyzer import BoardAnalyzer
 from board_clusterer import BoardClusterer
 from board_normalizer import BoardNormalizer
+from db.session import SessionLocal
 from eval7_service import Eval7Service
 from features.input_vector_builder import InputVectorBuilder
 from hand_classifier.hand_classifier import HandClassifier
+from helper.legal_action_resolver import LegalActionResolver
+from services.hand_range_service import HandRangeService
 from villain_range_estimator import VillainRangeEstimator
 
 
 class Container:
     def __init__(self):
+        self._db_session = None
+
         # Singleton/shared services
         self._eval_service = None
         self._board_analyzer = None
@@ -31,6 +39,17 @@ class Container:
         self._action_context_classifier = None
         self._tilt_risk_estimator = None
         self._opponent_aggregator = None
+
+        self._psychological_analyzer = None
+        self._hand_classifier = None
+        self._legal_action_resolver = None
+        self._hand_range_service =None
+
+    @property
+    def db_session(self) -> Session:
+        if not hasattr(self, "_db_session"):
+            self._db_session = SessionLocal()
+        return self._db_session
 
     @property
     def board_normalizer(self) -> BoardNormalizer:
@@ -68,16 +87,6 @@ class Container:
             self._villain_estimator = VillainRangeEstimator()
         return self._villain_estimator
 
-    @property
-    def input_vector_builder(self) -> InputVectorBuilder:
-        if self._input_vector_builder is None:
-            self._input_vector_builder = InputVectorBuilder(
-                eval_service=self.eval_service,
-                hand_classifier=self.hand_classifier,
-                board_analyzer=self.board_analyzer,
-                villain_estimator=self.villain_estimator,
-            )
-        return self._input_vector_builder
 
     # Advanced analyzers
 
@@ -116,3 +125,37 @@ class Container:
         if self._opponent_aggregator is None:
             self._opponent_aggregator = OpponentModelAggregator()
         return self._opponent_aggregator
+
+    @property
+    def legal_action_resolver(self) -> LegalActionResolver:
+        if self._legal_action_resolver is None:
+            self._legal_action_resolver = LegalActionResolver()
+        return self._legal_action_resolver
+
+    @property
+    def hand_range_service(self) -> HandRangeService:
+        if self._hand_range_service is None:
+            self._hand_range_service = HandRangeService(db_session=self.db_session)
+        return self._hand_range_service
+
+    @property
+    def psychological_analyzer(self) -> PsychologicalAnalyzer:
+        if self._psychological_analyzer is None:
+            self._psychological_analyzer = PsychologicalAnalyzer()
+        return self._psychological_analyzer
+
+    @property
+    def input_vector_builder(self) -> InputVectorBuilder:
+        if self._input_vector_builder is None:
+            self._input_vector_builder = InputVectorBuilder(
+                eval_service=self.eval_service,
+                hand_classifier=self.hand_classifier,
+                board_analyzer=self.board_analyzer,
+                villain_estimator=self.villain_estimator,
+                position_analyzer=self.position_analyzer,
+                action_history_analyzer=self.action_history_analyzer,
+                psychological_analyzer=self.psychological_analyzer,
+                hand_range_service=self.hand_range_service,
+                legal_action_resolver=self.legal_action_resolver,
+            )
+        return self._input_vector_builder

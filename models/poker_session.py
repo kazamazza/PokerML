@@ -1,5 +1,5 @@
 from enum import Enum
-
+from pydantic import parse_obj_as, TypeAdapter
 from pydantic import BaseModel
 from typing import List, Dict, Literal, Optional
 
@@ -63,3 +63,8 @@ class PokerSession(BaseModel):
     past_hand_results: Optional[List[HandResult]] = None  # Optional historical context
 
     player_role: PlayerRole  # ✅ NEW: direct from Node backend
+
+    @staticmethod
+    def from_json(data: dict) -> "PokerSession":
+        adapter = TypeAdapter(PokerSession)
+        return adapter.validate_python(data)

@@ -26,7 +26,6 @@ class InputVectorBuilder:
         psychological_analyzer: PsychologicalAnalyzer,
         hand_range_service: HandRangeService,
         legal_action_resolver: LegalActionResolver,
-
     ):
         self.eval_service = eval_service
         self.hand_classifier = hand_classifier
