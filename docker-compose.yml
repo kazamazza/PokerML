@@ -13,7 +13,7 @@ services:
 
   ml_service:
     build: .
-    env_file: .env
+    env_file: .env.docker
     depends_on:
       - db
     command: >
@@ -25,6 +25,7 @@ services:
     volumes:
       - .:/app
     environment:
+      INSIDE_DOCKER: "1"
       PYTHONPATH: /app
 
 volumes:

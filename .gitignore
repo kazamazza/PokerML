@@ -4,7 +4,7 @@ __pycache__/
 *.so
 
 # Environment files
-.env
+.env.docker
 *.env
 .venv/
 venv/

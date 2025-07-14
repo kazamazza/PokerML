@@ -6,7 +6,7 @@ from utils.poker_utils import rank_to_int
 
 @dataclass
 class HandContext:
-    hero_hand: str                                # e.g. "AhKs"
+    hero_hand: List[str]                                # e.g. "AhKs"
     board: List[str]                              # e.g. ["Ad", "7c", "2h"]
     board_texture: Optional[BoardTexture]         # From BoardAnalyzer
     all_cards: List[str] = field(init=False)      # Hero + board
@@ -24,14 +24,13 @@ class HandContext:
     board_values: List[int] = field(init=False)   # [14, 7, 2]
 
     def __post_init__(self):
-        self.hero_cards = [self.hero_hand[:2], self.hero_hand[2:]]
-        self.all_cards = self.hero_cards + self.board
+        self.all_cards = self.hero_hand + self.board
 
-        self.hero_ranks = [c[:-1] for c in self.hero_cards]
+        self.hero_ranks = [c[:-1] for c in self.hero_hand]
         self.board_ranks = [c[:-1] for c in self.board]
         self.all_ranks = self.hero_ranks + self.board_ranks
 
-        self.hero_suits = [c[-1] for c in self.hero_cards]
+        self.hero_suits = [c[-1] for c in self.hero_hand]
         self.board_suits = [c[-1] for c in self.board]
         self.suit_counts = Counter(self.hero_suits + self.board_suits)
 

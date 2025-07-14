@@ -37,7 +37,7 @@ class BoardTexture:
         self.high_card_rank = high_card_rank                    # Integer representation of highest card rank
         self.board_class = board_class                          # e.g., "high_card", "wet", "dry", etc.
         self.rank_cluster = rank_cluster                        # e.g., "low", "mid", "high", "broadway"
-        self.has_backdoor_flush_draw = has_backdoor_straight_draw
+        self.has_backdoor_straight_draw = has_backdoor_straight_draw
         self.texture_blocker_influence_score = texture_blocker_influence_score
         self.coordination_density_score = coordination_density_score
         self.board_cluster_id = board_cluster_id
@@ -48,3 +48,25 @@ class BoardTexture:
             f"class={self.board_class}, straight_draw={self.has_straight_draw}, "
             f"flush_draw={self.has_flush_draw}, high_card={self.high_card_rank}>"
         )
+
+    def to_dict(self) -> dict:
+        return {
+            "structure": self.structure,
+            "suit_texture": self.suit_texture,
+            "suits": self.suits,
+            "is_paired": self.is_paired,
+            "is_monotone": self.is_monotone,
+            "is_connected": self.is_connected,
+            "has_flush_draw": self.has_flush_draw,
+            "has_backdoor_flush_draw": self.has_backdoor_flush_draw,
+            "has_straight_draw": self.has_straight_draw,
+            "is_flush_possible": self.is_flush_possible,
+            "is_straight_possible": self.is_straight_possible,
+            "high_card_rank": self.high_card_rank,
+            "board_class": self.board_class,
+            "rank_cluster": self.rank_cluster,
+            "has_backdoor_straight_draw": self.has_backdoor_straight_draw,
+            "texture_blocker_influence_score": self.texture_blocker_influence_score,
+            "coordination_density_score": self.coordination_density_score,
+            "board_cluster_id": self.board_cluster_id,
+        }

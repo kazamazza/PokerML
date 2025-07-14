@@ -7,13 +7,21 @@ class HeroStateAnalyzer:
     def __init__(self, big_loss_threshold_bb: float = 50.0):
         self.big_loss_threshold_bb = big_loss_threshold_bb
 
-    def analyze(self, session: PokerSession) -> Dict[str, Any]:
+    def analyze(
+        self,
+        session: PokerSession
+    ) -> Dict[str, Any]:
         """
         Analyze the hero's psychological state based on historical outcomes.
+        `focus_seat` is provided for consistency with other analyzers.
         """
         hero_id = session.hero_id
         results: list[HandResult] = session.past_hand_results or []
-        villain_ids = [s.player_id for s in session.seats if s.seat_id != session.hero_position]
+        villain_ids = [
+            s.player_id
+            for s in session.seats
+            if s.seat_id != session.hero_position
+        ]
 
         # 1. Winrate vs Villains
         vs_villain_wins = 0
@@ -23,7 +31,6 @@ class HeroStateAnalyzer:
                 vs_villain_total += 1
                 if hand.hero_won:
                     vs_villain_wins += 1
-
         winrate = vs_villain_wins / vs_villain_total if vs_villain_total else None
 
         # 2. Recent big loss detection (last hand)

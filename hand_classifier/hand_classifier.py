@@ -31,7 +31,7 @@ class HandClassifier:
             HighCardDetector(),  # fallback
         ]
 
-    def classify(self, hero_hand: str, board: List[str], board_texture: BoardTexture = None) -> HandStrength:
+    def classify(self, hero_hand: List[str], board: List[str], board_texture: BoardTexture = None) -> HandStrength:
         hand_ctx = HandContext(hero_hand, board, board_texture)
         classification_ctx = ClassificationContext.from_hand_context(hand_ctx)
 

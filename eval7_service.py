@@ -1,3 +1,4 @@
+import random
 import eval7
 from typing import List
 
@@ -6,51 +7,44 @@ class Eval7Service:
     def __init__(self, iterations: int = 1000):
         self.iterations = iterations
 
-    def calculate_equity(self, hero_hand: str, board: List[str], villain_range: List[str]) -> float:
-        """
-        Estimate hero equity vs a villain range using eval7 Monte Carlo.
-
-        Args:
-            hero_hand: e.g., "AhKs"
-            board: e.g., ["Ad", "7c", "2h"]
-            villain_range: list of combos like ["QcJc", "9h9d", ...]
-
-        Returns:
-            equity (float): between 0 and 1
-        """
-        hero = [eval7.Card(hero_hand[:2]), eval7.Card(hero_hand[2:])]
+    def calculate_equity(self, hero_hand: List[str], board: List[str], villain_range: List[str]) -> float:
+        hero = [eval7.Card(card) for card in hero_hand]
         board_cards = [eval7.Card(card) for card in board]
 
         hero_wins = 0
         total_runs = 0
 
-        known_cards = set(hero + board_cards)
-
         for villain_str in villain_range:
-            villain = [eval7.Card(villain_str[:2]), eval7.Card(villain_str[2:])]
+            if len(villain_str) != 4:
+                continue  # skip invalid combo
+
+            try:
+                villain = [eval7.Card(villain_str[:2]), eval7.Card(villain_str[2:])]
+            except Exception:
+                continue  # skip bad strings like "XZXX"
 
             # Skip combos with overlapping cards
             if len(set(hero + villain + board_cards)) != len(hero + villain + board_cards):
                 continue
 
-            deck = eval7.Deck()
-            for card in hero + villain + board_cards:
-                deck.cards.remove(card)
+            # Build deck excluding known cards
+            full_deck = [card for card in eval7.Deck() if card not in hero + villain + board_cards]
 
             for _ in range(self.iterations):
-                deck.shuffle()
+                eval_deck = full_deck.copy()
+                random.shuffle(eval_deck)
+
                 full_board = board_cards.copy()
                 while len(full_board) < 5:
-                    full_board.append(deck.peek())
+                    full_board.append(eval_deck.pop())
 
                 hero_eval = eval7.evaluate(hero + full_board)
                 villain_eval = eval7.evaluate(villain + full_board)
 
-                if hero_eval < villain_eval:  # lower = better hand
+                if hero_eval < villain_eval:
                     hero_wins += 1
                 elif hero_eval == villain_eval:
                     hero_wins += 0.5
-                # else villain wins (score += 0)
 
                 total_runs += 1
 

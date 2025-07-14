@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, cast, Literal
 from collections import Counter
 from board_clusterer import BoardClusterer
 from models.board_texture import BoardTexture
@@ -61,9 +61,12 @@ class BoardAnalyzer:
 
         board_cluster_id = self._lookup_board_cluster_id(board)
 
+        structure_final = cast(Literal["paired", "connected", "uncoordinated"], structure)
+        suit_texture_final = cast(Literal["monotone", "two-tone", "rainbow"], suit_texture)
+
         return BoardTexture(
-            structure=structure,
-            suit_texture=suit_texture,
+            structure=structure_final,
+            suit_texture=suit_texture_final,
             suits=dict(suit_counts),
             is_paired=is_paired,
             is_monotone=is_monotone,
@@ -151,3 +154,6 @@ class BoardAnalyzer:
             coordination_density_score=0.0,
             board_cluster_id=0
         )
+
+    def get_cluster_id(self, board: List[str]) -> str:
+        return self.board_clusterer.get_cluster_key(board)

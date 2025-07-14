@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from models.poker_ml_input import PositionContext
 from models.poker_session import PokerSession, TableSeat
 
@@ -7,21 +7,24 @@ class PositionAnalyzer:
         pass
 
     def analyze(self, session: PokerSession) -> PositionContext:
-        hero_position: TableSeat = session.heroPosition
-        all_seats: List[TableSeat] = list(session.stackSizes.keys())
-        active_seats = [seat for seat in all_seats if seat not in session.foldedPlayers]
+        hero_position: TableSeat = session.hero_position
+        all_seats: List[TableSeat] = list(session.stack_sizes.keys())
+        active_seats = [seat for seat in all_seats if seat not in session.folded_players]
         villain_positions = [seat for seat in active_seats if seat != hero_position]
 
         is_heads_up = len(villain_positions) == 1
         is_multiway = len(villain_positions) > 1
         in_position = self._is_in_position(hero_position, villain_positions, all_seats)
 
-        # Estimate aggressor
-        aggressor_position = (
-            session.calculations.lastAggressor if session.calculations else None
-        )
-        if not aggressor_position and session.lastAggressiveAction:
-            aggressor_position = session.lastAggressiveAction.playerSeat
+        # Determine last aggressor: prefer session.calculations if available, else scan action_history
+        aggressor_position: Optional[str] = None
+        if hasattr(session, 'calculations') and session.calculations and getattr(session.calculations, 'lastAggressor', None):
+            aggressor_position = session.calculations.lastAggressor
+        else:
+            for event in reversed(session.action_history):
+                if event.action in {'bet', 'raise', '3bet', 'shove', 'check_raise'}:
+                    aggressor_position = event.player  # assuming player holds the seat identifier
+                    break
 
         return PositionContext(
             in_position=in_position,
@@ -40,14 +43,11 @@ class PositionAnalyzer:
         if not villains:
             return True  # solo player
 
-        # Create circular index map
         total_players = len(seat_order)
         hero_idx = seat_order.index(hero)
         villain_indices = [seat_order.index(v) for v in villains]
 
-        # Find first actor (smallest index after hero)
-        # In poker, postflop acts left of button → circular comparison
-        # So hero is in position if their index is higher than all villains (modulo wraparound)
+        # Hero is in position if all villains act before hero in the circular order
         for i in range(1, total_players):
             next_idx = (hero_idx + i) % total_players
             if next_idx in villain_indices:

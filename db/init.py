@@ -1,5 +1,5 @@
-from db.session import engine
 from db.base import Base
+from db.session import engine
 from models.hand_range import HandRange
 
 def init_db():

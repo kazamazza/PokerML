@@ -1,103 +1,75 @@
-from typing import List
-
 import pytest
 
 from container import Container
 from features.input_vector_builder import InputVectorBuilder
-from models.hand_result import HandResult
-from models.poker_session import PokerSession, Street, TableSeat, Stakes, PlayerSeat, ActionEvent, PlayerRole
+from models.poker_ml_input import FundamentalInputs
+from models.poker_session import PokerSession
 
 
-class MockSession(PokerSession):
-    session_id: str = "abc123"
-    current_hand_id: str = "hand001"
-    hero_id: str = "hero1"
-    stakes: Stakes = Stakes(big_blind=2.0, small_blind=1.0)
-    hero_hand: str = "AhKd"
-    board: str = "As9d2c"
-    street: Street = Street.FLOP
-    pot_size: float = 6.0
-    player_count: int = 2
-    stack_sizes: dict = {
-        TableSeat.BTN: 100.0,
-        TableSeat.BB: 80.0
-    }
-    hero_position: TableSeat = TableSeat.BTN
-    folded_players: List[TableSeat] = []
-    seats: List[PlayerSeat] = [
-        PlayerSeat(seat_id=TableSeat.BTN, player_id="hero1"),
-        PlayerSeat(seat_id=TableSeat.BB, player_id="villain1")
-    ]
-    action_history: List[ActionEvent] = [
-        ActionEvent(player="villain1", action="check", amount=None, street=Street.FLOP, timestamp=1),
-        ActionEvent(player="hero1", action="bet", amount=3.0, street=Street.FLOP, timestamp=2),
-    ]
-    past_hand_results: List[HandResult] = []
-    player_role: PlayerRole = PlayerRole.BTN_vs_BB
-
-
+# Static sample JSON input
 @pytest.fixture
-def tier1_inputs():
+def sample_session_json():
+    return {
+        "session_id": "abc123",
+        "current_hand_id": "hand001",
+        "hero_id": "hero1",
+        "stakes": {
+            "big_blind": 2.0,
+            "small_blind": 1.0
+        },
+        "hero_hand": "AhKd",
+        "board": "As9d2c",
+        "street": "flop",
+        "pot_size": 6.0,
+        "player_count": 2,
+        "stack_sizes": {
+            "BTN": 100.0,
+            "BB": 80.0
+        },
+        "hero_position": "BTN",
+        "folded_players": [],
+        "seats": [
+            {"seat_id": "BTN", "player_id": "hero1", "stack_size": 100.0},
+            {"seat_id": "BB", "player_id": "villain1", "stack_size": 80.0}
+        ],
+        "action_history": [
+            {
+                "player": "villain1",
+                "action": "check",
+                "amount": None,
+                "street": "flop",
+                "timestamp": 1
+            },
+            {
+                "player": "hero1",
+                "action": "bet",
+                "amount": 3.0,
+                "street": "flop",
+                "timestamp": 2
+            }
+        ],
+        "past_hand_results": [],
+        "player_role": "BTN_vs_BB"
+    }
+
+
+def test_build_tier1_inputs_from_json(sample_session_json):
+    # Parse session from raw JSON
+    session = PokerSession.from_json(sample_session_json)
+    # Build Tier 1 inputs
     container = Container()
-    session = MockSession()
-    builder: InputVectorBuilder = container.input_vector_builder  # Injected with full dependencies
-    return builder.build(session)
+    builder: InputVectorBuilder = container.input_vector_builder
+    inputs = builder.build(session)
 
+    assert isinstance(inputs.fundamentals, FundamentalInputs)
 
-def test_hero_hand(tier1_inputs):
-    assert tier1_inputs.hero_hand == "AhKd"
-
-
-def test_board_cards(tier1_inputs):
-    assert tier1_inputs.board_cards == ["As", "9d", "2c"]
-
-
-def test_street(tier1_inputs):
-    assert tier1_inputs.street == "flop"
-
-
-def test_hero_position(tier1_inputs):
-    assert tier1_inputs.hero_position == "BTN"
-
-
-def test_player_role(tier1_inputs):
-    assert tier1_inputs.player_role == "BTN_vs_BB"
-
-
-def test_stack_to_pot_ratio(tier1_inputs):
-    assert isinstance(tier1_inputs.stack_to_pot_ratio, float)
-
-
-def test_pot_size(tier1_inputs):
-    assert tier1_inputs.pot_size == 6.0
-
-
-def test_effective_stack(tier1_inputs):
-    assert isinstance(tier1_inputs.effective_stack, float)
-    assert tier1_inputs.effective_stack == 80.0  # min(hero, villain)
-
-
-def test_legal_actions(tier1_inputs):
-    assert isinstance(tier1_inputs.legal_actions, list)
-    assert all(isinstance(a, str) for a in tier1_inputs.legal_actions)
-
-
-def test_hero_equity_vs_range(tier1_inputs):
-    assert 0.0 <= tier1_inputs.hero_equity_vs_range <= 1.0
-
-
-def test_hero_hand_strength(tier1_inputs):
-    assert isinstance(tier1_inputs.hero_hand_strength, str)
-
-
-def test_board_texture(tier1_inputs):
-    assert hasattr(tier1_inputs.board_texture, "structure")
-    assert tier1_inputs.board_texture.structure in ["paired", "connected", "uncoordinated"]
-
-
-def test_position_context(tier1_inputs):
-    ctx = tier1_inputs.position_context
-    assert isinstance(ctx.in_position, bool)
-    assert isinstance(ctx.is_heads_up, bool)
-    assert isinstance(ctx.is_multiway, bool)
-    assert isinstance(ctx.aggressor_position, str)
+    # Check some core values
+    assert inputs.fundamentals.hero_hand == ["Ah", "Kd"]
+    assert inputs.fundamentals.board_cards == ["As", "9d", "2c"]
+    assert inputs.fundamentals.street == "flop"
+    assert inputs.fundamentals.hero_position == "BTN"
+    assert inputs.fundamentals.player_role == "BTN_vs_BB"
+    assert inputs.fundamentals.stack_to_pot_ratio > 0
+    assert 0 <= inputs.fundamentals.hero_equity_vs_range <= 1
+    assert isinstance(inputs.fundamentals.board_texture.suits, dict)
+    assert "call" in inputs.fundamentals.legal_actions

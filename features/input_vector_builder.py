@@ -1,17 +1,18 @@
-from analysis.action_history_analyzer import ActionHistoryAnalyzer
+from typing import Dict
 from analysis.position_analyzer import PositionAnalyzer
-from analysis.psychological_analyzer import PsychologicalAnalyzer
 from board_analyzer import BoardAnalyzer
 from eval7_service import Eval7Service
 from hand_classifier.hand_classifier import HandClassifier
 from helper.hand_range_utils import HandRangeUtils
 from helper.legal_action_resolver import LegalActionResolver
 from helper.role_position_parser import RolePositionParser
-from models.poker_ml_input import PokerMLInput, Tier1Inputs, Tier2Inputs, Tier3Inputs, BetAction
+from models.board_texture import BoardTexture
+from models.poker_ml_input import PokerMLInput, FundamentalInputs, BetAction, VillainProfile
 from models.poker_session import PokerSession
-from models.villain_action_history import VillainActionHistory, HandActionHistory
+from services.game_dynamics_builder import GameDynamicsBuilder
 from services.hand_range_service import HandRangeService
-from villain_range_estimator import VillainRangeEstimator
+from services.psychological_context_builder import PsychologicalContextBuilder
+from services.villain_profile_builder import VillainProfileBuilder
 
 
 class InputVectorBuilder:
@@ -20,123 +21,130 @@ class InputVectorBuilder:
         eval_service: Eval7Service,
         hand_classifier: HandClassifier,
         board_analyzer: BoardAnalyzer,
-        villain_estimator: VillainRangeEstimator,
         position_analyzer: PositionAnalyzer,
-        action_history_analyzer: ActionHistoryAnalyzer,
-        psychological_analyzer: PsychologicalAnalyzer,
-        hand_range_service: HandRangeService,
         legal_action_resolver: LegalActionResolver,
+        hand_range_service: HandRangeService,
+        villain_profile_builder: VillainProfileBuilder,
+        game_dynamics_builder: GameDynamicsBuilder,
+        psychological_context_builder: PsychologicalContextBuilder,
     ):
         self.eval_service = eval_service
         self.hand_classifier = hand_classifier
         self.board_analyzer = board_analyzer
-        self.villain_estimator = villain_estimator
         self.position_analyzer = position_analyzer
-        self.action_history_analyzer = action_history_analyzer
-        self.psychological_analyzer = psychological_analyzer
-        self.hand_range_service = hand_range_service
         self.legal_action_resolver = legal_action_resolver
+        self.hand_range_service = hand_range_service
+        self.villain_profile_builder = villain_profile_builder
+        self.game_dynamics_builder = game_dynamics_builder
+        self.psychological_context_builder = psychological_context_builder
 
     def build(self, session: PokerSession) -> PokerMLInput:
-        # 1. Tier 1 base extraction
-        hero_hand = session.hero_hand.strip().replace(" ", "")
-        board = session.board.split(",") if session.board else []
+        # 1. Build villain profiles for equity and downstream inputs
+        villain_profiles = self.villain_profile_builder.build(session)
+
+        # 2. Build fundamentals (including hero_equity_vs_range)
+        fundamentals = self._build_fundamentals(session, villain_profiles)
+
+        # 3. Build game dynamics and psychological context
+        dynamics = self.game_dynamics_builder.build(session)
+        psych = self.psychological_context_builder.build(session)
+
+        return PokerMLInput(
+            fundamentals=fundamentals,
+            villain_profiles=villain_profiles,
+            dynamics=dynamics,
+            psych=psych,
+        )
+
+    def _build_fundamentals(
+        self,
+        session: PokerSession,
+        villain_profiles: dict,
+    ) -> FundamentalInputs:
+        # Basic session state
+        hero_hand = session.hero_hand
+        board = session.board
         street = session.street
         pot_size = session.pot_size or 0.0
         stack = session.stack_sizes.get(session.hero_position, 0.0)
         spr = stack / pot_size if pot_size > 0 else 0.0
 
-        role = session.role
-
-        # 1. Derived fields
+        # Analyze board and hand
         board_texture = self.board_analyzer.analyze(board)
         hand_strength = self.hand_classifier.classify(hero_hand, board)
-
-        # 2. Determine hero and villains based on role
-        parser = RolePositionParser(role)
-        hero_pos = parser.get_hero()
-        villain_positions = parser.get_villains()
-
-        # 3. Load villain hand ranges
-        villain_ranges = []
-
-        for villain_pos in villain_positions:
-            villain_range = self.hand_range_service.get_range(
-                player_role=role,
-                round=street,
-                board=board,
-            )
-            if villain_range:
-                villain_ranges.append(villain_range)
-
-        # 4. Combine villain ranges for Eval7 (e.g., union of combos)
-        combined_villain_range = HandRangeUtils.merge_ranges(villain_ranges)
-
-        # 5. Run equity calculation
-        equity = self.eval_service.calculate_equity(
-            hero_hand=hero_hand,
-            board=board,
-            villain_range=combined_villain_range
-        )
-        # 3. Position context
         position_ctx = self.position_analyzer.analyze(session)
 
+        # Determine legal actions
+        is_all_in = stack <= 0.0
+        bet_history = [
+            BetAction(player=a.player, action=a.action, size=a.amount or 0.0)
+            for a in session.action_history
+            if a.action in {"bet", "raise", "call", "3bet", "shove"}
+        ]
         legal_actions = self.legal_action_resolver.resolve(
             street=street,
             stack=stack,
             pot_size=pot_size,
-            bet_history=[
-                BetAction(player=a.player, action=a.action, size=a.amount or 0.0)
-                for a in session.action_history
-                if a.action in {"bet", "raise", "call", "3bet", "shove"}
-            ],
-            is_all_in=session.hero_profile.isAllIn
+            bet_history=bet_history,
+            is_all_in=is_all_in,
         )
 
-        tier1 = Tier1Inputs(
+        # Calculate hero equity vs combined villain ranges
+        equity = self._calculate_hero_equity(
+            session=session,
+            villain_profiles=villain_profiles,
+            board_texture=board_texture,
+        )
+
+        return FundamentalInputs(
             hero_hand=hero_hand,
             board_cards=board,
             street=street,
-            hero_position=session.heroPosition,
-            player_role=role,
+            hero_position=session.hero_position,
+            player_role=session.player_role,
             stack_to_pot_ratio=spr,
             pot_size=pot_size,
             effective_stack=stack,
             legal_actions=legal_actions,
             hero_equity_vs_range=equity,
-            hero_hand_strength=hand_strength.label,  # ✅ just the label
-            board_texture=board_texture,  # ✅ just the structure string
-            position_context=position_ctx
+            hero_hand_strength=hand_strength.label,
+            board_texture=board_texture,
+            position_context=position_ctx,
         )
 
-        hero = session.hero_position
-        active_villains = [
-            s.seat_id for s in session.seats
-            if s.seat_id != hero and s.seat_id not in session.folded_players
-        ]
+    def _calculate_hero_equity(
+            self,
+            session: PokerSession,
+            villain_profiles: Dict[str, VillainProfile],
+            board_texture: BoardTexture
+    ) -> float:
+        board = session.board
+        board_cluster_key = self.board_analyzer.get_cluster_id(board)
+        board_str = "".join(board)
 
-        tier2_aggregate = {}
+        parser = RolePositionParser(session.player_role)
+        villain_positions = parser.get_villains()
 
-        for seat in active_villains:
-            villain_actions = [a for a in session.action_history if a.player == seat]
-
-            hand_history = HandActionHistory(hand_id=session.current_hand_id, actions=villain_actions)
-
-            history = VillainActionHistory(
-                seat=seat,
-                total_hands_played=1,
-                hands=[hand_history],
+        villain_ranges = []
+        for pos in villain_positions:
+            profile = villain_profiles.get(pos)
+            if not profile:
+                continue
+            villain_range = self.hand_range_service.get_range(
+                player_role=session.player_role,
+                round=session.street,
+                board=board_str,
+                board_cluster=board_cluster_key,
+                board_texture=board_texture,
+                villain_profile=profile.to_dict(),  # or .to_dict() depending on implementation
             )
+            if villain_range:
+                villain_ranges.append(villain_range)
 
-            stats = self.action_history_analyzer.analyze(history)
+        merged_range = HandRangeUtils.merge_ranges(villain_ranges)
 
-            for k, v in stats.items():
-                tier2_aggregate.setdefault(k, []).append(v)
-
-        tier2_averaged = {k: sum(vs) / len(vs) for k, vs in tier2_aggregate.items()}
-        tier2 = Tier2Inputs(**tier2_averaged)
-        # Tier 3 psychological metrics
-        tier3_metrics = self.psychological_analyzer.analyze(session)
-        tier3 = Tier3Inputs(**tier3_metrics)
-
-        return PokerMLInput(tier1=tier1, tier2=tier2, tier3=tier3)
+        return self.eval_service.calculate_equity(
+            hero_hand=session.hero_hand,
+            board=session.board,
+            villain_range=merged_range
+        )

@@ -1,8 +1,7 @@
 from typing import Optional
-
 from hand_classifier.classification_context import ClassificationContext
 from models.hand_strength import HandStrength
-from utils.poker_utils import rank_to_int, int_to_rank
+from utils.poker_utils import int_to_rank, rank_to_int
 
 
 class FlushDetector:
@@ -21,6 +20,6 @@ class FlushDetector:
 
         high_card = suited_ranks[0]
         label = f"Flush (High {int_to_rank(high_card)})"
-        score = 0.82  # Can be tuned based on strength buckets
+        score = 0.82  # Tunable based on equity buckets
 
         return HandStrength(label=label, score=score)

@@ -1,5 +1,4 @@
 import pytest
-
 from models.poker_session import PokerSession
 
 
@@ -51,8 +50,8 @@ def test_poker_session_from_json(sample_session_json):
     session = PokerSession.from_json(sample_session_json)
 
     assert session.session_id == "abc123"
-    assert session.hero_hand == "AhKd"
-    assert session.board == "As9d2c"
+    assert session.hero_hand == ["Ah", "Kd"]  # updated
+    assert session.board == ["As", "9d", "2c"]  # updated
     assert session.street == "flop"
     assert session.stakes.big_blind == 2.0
     assert session.stakes.small_blind == 1.0

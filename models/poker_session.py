@@ -48,8 +48,8 @@ class PokerSession(BaseModel):
     current_hand_id: str
     hero_id: str
     stakes: Stakes
-    hero_hand: str                      # e.g., "AhKd"
-    board: Optional[str] = None         # e.g., "7hTdQs" or None (preflop)
+    hero_hand: List[str]  # e.g., ["Ah", "Kd"]
+    board: Optional[List[str]] = None  # e.g., ["7h", "Td", "Qs"] or None (preflop)
     street: Street
     pot_size: float
     player_count: int
@@ -66,5 +66,17 @@ class PokerSession(BaseModel):
 
     @staticmethod
     def from_json(data: dict) -> "PokerSession":
+        def parse_cards(card_str: Optional[str]) -> Optional[List[str]]:
+            if not card_str:
+                return None
+            return [card_str[i:i + 2] for i in range(0, len(card_str), 2)]
+
+        # Parse hero_hand and board if they are strings
+        if isinstance(data.get("hero_hand"), str):
+            data["hero_hand"] = parse_cards(data["hero_hand"])
+
+        if isinstance(data.get("board"), str):
+            data["board"] = parse_cards(data["board"])
+
         adapter = TypeAdapter(PokerSession)
         return adapter.validate_python(data)

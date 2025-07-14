@@ -1,4 +1,14 @@
 import os
+from dotenv import load_dotenv
+from project_root import PROJECT_ROOT
+
+# Detect environment
+# Dynamically select the correct .env file path
+env_file_name = ".env.docker" if os.getenv("INSIDE_DOCKER") == "1" else ".env.local"
+env_file_path = os.path.join(PROJECT_ROOT, env_file_name)
+
+# Load environment variables
+load_dotenv(dotenv_path=env_file_path)
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

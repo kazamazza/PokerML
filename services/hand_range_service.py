@@ -1,7 +1,9 @@
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 from db.models.hand_range import HandRange
-from models.poker_session import PokerSession
+from models.board_texture import BoardTexture
+from models.poker_session import PokerSession, PlayerRole
+
 
 class HandRangeService:
     def __init__(self, db_session: Session):
@@ -9,17 +11,20 @@ class HandRangeService:
 
     def get_range(
         self,
-        player_role: str,
+        player_role: PlayerRole,
         round: str,
         board: str,
         board_cluster: str,
-        board_texture: Dict[str, Any],
+        board_texture: BoardTexture,
         villain_profile: Dict[str, Any]
     ) -> Dict[str, list]:
         """
         Attempts to fetch a hand range based on full villain profile and board info.
         Fallbacks: exact match → cluster → similarity → default.
         """
+        if isinstance(player_role, PlayerRole):
+            player_role = player_role.value
+        print("▶️ get_range called with:", player_role, round, board_cluster)
         query_filters = dict(
             player_role=player_role,
             round=round,
@@ -49,8 +54,8 @@ class HandRangeService:
             return {player_role: cluster.hand_range}  # type: ignore
 
         # 🔵 Fallback: Similar board texture structure/suit
-        structure = board_texture.get("structure")
-        suit_texture = board_texture.get("suitTexture")
+        structure = board_texture.structure
+        suit_texture = board_texture.suit_texture
         similar = (
             self.db.query(HandRange)
             .filter(
