@@ -4,7 +4,6 @@ from hand_classifier.classification_context import ClassificationContext
 from hand_classifier.detectors.combo_draw_detector import ComboDrawDetector
 from hand_classifier.detectors.flush_detector import FlushDetector
 from hand_classifier.detectors.full_house_detector import FullHouseDetector
-from hand_classifier.detectors.high_card_detector import HighCardDetector
 from hand_classifier.detectors.one_pair_detector import OnePairDetector
 from hand_classifier.detectors.quads_detector import QuadsDetector
 from hand_classifier.detectors.set_detector import SetDetector
@@ -13,7 +12,7 @@ from hand_classifier.detectors.trips_detector import TripsDetector
 from hand_classifier.detectors.two_pair_detector import TwoPairDetector
 from models.board_texture import BoardTexture
 from models.hand_context import HandContext
-from models.hand_strength import HandStrength
+from models.hand_strength import HandStrength, HandCategory
 
 
 class HandClassifier:
@@ -27,8 +26,7 @@ class HandClassifier:
             OnePairDetector(),
             FlushDetector(),
             StraightDetector(),
-            ComboDrawDetector(),
-            HighCardDetector(),  # fallback
+            ComboDrawDetector()
         ]
 
     def classify(self, hero_hand: List[str], board: List[str], board_texture: BoardTexture = None) -> HandStrength:
@@ -40,4 +38,4 @@ class HandClassifier:
             if result is not None:
                 return result
 
-        return HandStrength("Unknown", 0.0)
+        return HandStrength(HandCategory.HIGH_CARD)

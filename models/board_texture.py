@@ -9,6 +9,7 @@ class BoardTexture:
         suits: Dict[str, int],
         is_paired: bool,
         is_monotone: bool,
+        is_two_tone: bool,
         is_connected: bool,
         has_flush_draw: bool,
         has_backdoor_flush_draw: bool,
@@ -28,6 +29,7 @@ class BoardTexture:
         self.suits = suits                                      # e.g., {"h": 2, "s": 1}
         self.is_paired = is_paired
         self.is_monotone = is_monotone
+        self.is_two_tone = is_two_tone
         self.is_connected = is_connected
         self.has_flush_draw = has_flush_draw
         self.has_backdoor_flush_draw = has_backdoor_flush_draw

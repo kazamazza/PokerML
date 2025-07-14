@@ -15,6 +15,8 @@ class ActionEvent(BaseModel):
     street: Street
     timestamp: Optional[int] = None
     target: Optional[str] = None  # 🆕 Add this if tracking targeted aggression
+    is_check_raise: bool = False   # 🆕 flag
+    had_raised_before: bool = False    # ← add this
 
 class Stakes(BaseModel):
     big_blind: float

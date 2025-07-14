@@ -22,7 +22,9 @@ class SessionContextAnalyzer:
         # Hero‐state (winrate, tilt, etc.)
         metrics.update(self.hero_state_analyzer.analyze(session))
         # Multiway aggression across all active villains
-        metrics["multiway_aggression_score"] = (
-            self.multiway_aggression_analyzer.analyze(session)
-        )
+        raw = self.multiway_aggression_analyzer.analyze(session)
+        if isinstance(raw, dict):
+            metrics["multiway_aggression_score"] = raw.get("multiway_aggression_score")
+        else:
+            metrics["multiway_aggression_score"] = raw
         return metrics

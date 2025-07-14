@@ -1,6 +1,6 @@
-from typing import Dict
+from typing import Dict, List
 
-from models.villain_action_history import VillainActionHistory
+from models.villain_action_history import VillainActionHistory, HandActionHistory
 
 
 class VillainHistoryAnalyzer:
@@ -18,8 +18,8 @@ class VillainHistoryAnalyzer:
 
         result = {
             "villain_profile_type": "unknown",  # Set this later if desired
-            "villain_vpip": self._compute_vpip(actions, total_hands),
-            "villain_pfr": self._compute_pfr(actions, total_hands),
+             "villain_vpip": self._compute_vpip(history.hands, total_hands),
+            "villain_pfr": self._compute_pfr(history.hands, total_hands),
             "villain_aggression_factor": self._compute_aggression(actions),
             "villain_bluff_frequency": self._compute_bluff_freq(actions),
             "villain_check_raise_freq": self._compute_check_raise_freq(actions),
@@ -43,13 +43,33 @@ class VillainHistoryAnalyzer:
             "villain_hero_bully_history": 0.0,
         }
 
-    def _compute_vpip(self, actions, total_hands):
-        vpip_actions = [a for a in actions if a.street == "preflop" and a.action in {"call", "raise"}]
-        return len(vpip_actions) / total_hands
+    def _compute_vpip(
+            self,
+            hands: List[HandActionHistory],
+            total_hands: int
+    ) -> float:
+        hands_with_vpip = 0
+        for hand in hands:
+            if any(
+                    a.street == "preflop" and a.action in {"call", "raise"}
+                    for a in hand.actions
+            ):
+                hands_with_vpip += 1
+        return hands_with_vpip / total_hands
 
-    def _compute_pfr(self, actions, total_hands):
-        pfr_actions = [a for a in actions if a.street == "preflop" and a.action in {"raise", "3bet", "shove"}]
-        return len(pfr_actions) / total_hands
+    def _compute_pfr(
+            self,
+            hands: List[HandActionHistory],
+            total_hands: int
+    ) -> float:
+        hands_with_pfr = 0
+        for hand in hands:
+            if any(
+                    a.street == "preflop" and a.action in {"raise", "3bet", "shove"}
+                    for a in hand.actions
+            ):
+                hands_with_pfr += 1
+        return hands_with_pfr / total_hands
 
     def _compute_aggression(self, actions):
         bets = sum(1 for a in actions if a.action in {"bet", "raise"})
@@ -62,9 +82,9 @@ class VillainHistoryAnalyzer:
         return bluff_attempts / total_bets if total_bets > 0 else 0.0
 
     def _compute_check_raise_freq(self, actions):
-        check_raises = sum(1 for a in actions if a.action == "raise" and "check" in a.context if hasattr(a, "context"))
-        total_raises = sum(1 for a in actions if a.action == "raise")
-        return check_raises / total_raises if total_raises > 0 else 0.0
+        check_raises = sum(1 for a in actions if a.is_check_raise)
+        total_raises = sum(1 for a in actions if a.action == "raise" or a.is_check_raise)
+        return check_raises / total_raises if total_raises else 0.0
 
     def _compute_showdown_winrate(self, history: VillainActionHistory):
         wins = sum(1 for h in history.hands if getattr(h, "won_showdown", False))

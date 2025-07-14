@@ -1,7 +1,24 @@
+from enum import Enum
+
+
+class HandCategory(str, Enum):
+    HIGH_CARD    = "High Card"
+    ONE_PAIR     = "One Pair"
+    TWO_PAIR     = "Two Pair"
+    TRIPS        = "Trips"
+    SET          = "Set"
+    STRAIGHT     = "Straight"
+    FLUSH        = "Flush"
+    FULL_HOUSE   = "Full House"
+    QUADS        = "Quads"
+    COMBO_DRAW   = "Combo Draw"
+    UNKNOWN = "Unknown"
+
 class HandStrength:
-    def __init__(self, label: str, score: float):
-        self.label = label  # e.g., "Top Pair", "Overpair", "Combo Draw"
-        self.score = score  # Normalized float from 0.0 to 1.0
+    def __init__(self, label: HandCategory):
+        if not isinstance(label, HandCategory):
+            raise ValueError(f"Invalid hand label: {label!r}; must be one of {list(HandCategory)}")
+        self.label: HandCategory = label
 
     def __repr__(self):
-        return f"HandStrength(label={self.label}, score={round(self.score, 2)})"
+        return f"HandStrength(label={self.label.value})"

@@ -24,7 +24,6 @@ class HandRangeService:
         """
         if isinstance(player_role, PlayerRole):
             player_role = player_role.value
-        print("▶️ get_range called with:", player_role, round, board_cluster)
         query_filters = dict(
             player_role=player_role,
             round=round,
@@ -56,17 +55,25 @@ class HandRangeService:
         # 🔵 Fallback: Similar board texture structure/suit
         structure = board_texture.structure
         suit_texture = board_texture.suit_texture
+
+        # Dump everything you’re about to use in the LIKE filters:
+        print("🔍 Similarity debug parameters:")
+        print(f"  player_role    = {player_role!r}")
+        print(f"  round          = {round!r}")
+        print(f"  board_cluster  LIKE %{{structure}}% → %{structure}%")
+        print(f"  board_cluster  LIKE %{{suit_texture}}% → %{suit_texture}%")
+
         similar = (
             self.db.query(HandRange)
             .filter(
                 HandRange.player_role == player_role,
                 HandRange.round == round,
                 HandRange.board_cluster.like(f"%{structure}%"),
-                HandRange.board_cluster.like(f"%{suit_texture}%"),
-                HandRange.villain_type == query_filters["villain_type"]
+                HandRange.board_cluster.like(f"%{suit_texture}%")
             )
             .first()
         )
+
         if similar:
             print("⚠️ No cluster match. Using texture similarity fallback.")
             return {player_role: similar.hand_range}  # type: ignore

@@ -1,6 +1,4 @@
 from sqlalchemy.orm import Session
-
-from analysis import hero_state_analyzer
 from analysis.action_history_analyzer import ActionHistoryAnalyzer
 from analysis.position_analyzer import PositionAnalyzer
 from analysis.psychological_analyzer import PsychologicalAnalyzer
@@ -18,7 +16,6 @@ from services.game_dynamics_builder import GameDynamicsBuilder
 from services.hand_range_service import HandRangeService
 from services.psychological_context_builder import PsychologicalContextBuilder
 from services.villain_profile_builder import VillainProfileBuilder
-from villain_range_estimator import VillainRangeEstimator
 
 
 class Container:
@@ -88,12 +85,6 @@ class Container:
         if self._hand_classifier is None:
             self._hand_classifier = HandClassifier()
         return self._hand_classifier
-
-    @property
-    def villain_estimator(self) -> VillainRangeEstimator:
-        if self._villain_estimator is None:
-            self._villain_estimator = VillainRangeEstimator()
-        return self._villain_estimator
 
     @property
     def villain_history_analyzer(self) -> VillainHistoryAnalyzer:
